@@ -19,8 +19,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 #setGrid label.ck{flex-direction:row;align-items:center;gap:8px;color:var(--text);font-size:14px}
 #setGrid input[type=range]{width:100%}
 #setGrid select{background:#16202b;color:var(--text);border:1px solid #2c3a4b;border-radius:8px;padding:6px;font:inherit}
-#uiBtn{position:absolute;right:10px;top:10px;pointer-events:auto;display:none;width:40px;height:40px;border-radius:10px;border:1px solid #2c3a4b;background:rgba(22,32,43,.8);color:#e8eef5;font-size:12px;font-weight:700;z-index:3}
-body.mobile #uiBtn{display:block}
+#uiBtn{position:absolute;right:14px;top:14px;pointer-events:auto;display:block;min-width:40px;padding:0 10px;height:36px;border-radius:10px;border:1px solid #2c3a4b;background:rgba(22,32,43,.8);color:#e8eef5;font-size:12px;font-weight:700;z-index:3}
+body.mobile #uiBtn{right:8px;top:8px}
+#stations{top:58px!important}
+body.hideall #top,body.hideall #stations,body.hideall #dash,body.hideall #viewHint,body.hideall #joyWrap{display:none!important}
+body.hideall #uiBtn{opacity:.55}
 body.mobile #stations,body.mobile #viewHint,body.mobile #scoreBox,body.mobile #clockBox,body.mobile #infoRow,body.mobile #lamps,body.mobile #lineBadge{display:none!important}
 body.mobile #top{left:8px;top:8px;right:56px}
 body.mobile #top .box{padding:5px 9px}
@@ -250,7 +253,7 @@ th{color:var(--muted);font-weight:600;font-size:12px}
     </div>
   </div>
   <div id="viewHint"></div>
-  <button id="uiBtn">UI</button>
+  <button id="uiBtn">UI 숨기기</button>
   <div id="joyWrap"><div id="joy"><i id="joyK"></i></div><div id="joyUD"><button data-z="1">▲<br>위</button><button data-z="-1">▼<br>아래</button></div></div>
 </div>
 
@@ -1032,7 +1035,7 @@ addEventListener('keydown',e=>{
   else if(c==='KeyV')act('view');
   else if(c>='Digit1'&&c<='Digit4')setView(VIEWS[+c.slice(5)-1]);
   else if(c==='KeyT'){G.ts=G.ts===1?2:G.ts===2?4:1;toast(`시간 배속 ×${G.ts}`,'info',1200);}
-  else if(c==='Tab')document.body.classList.toggle('nohud');
+  else if(c==='Tab')toggleUI();
 });
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
@@ -1098,7 +1101,8 @@ $('sCreset').onclick=()=>{$('sCx').value=$('sCy').value=$('sCz').value=0;G.camOf
 $('sNp').onchange=e=>{OPT.np=+e.target.value;if(G.started){NP=OPT.np||TP.np||4;G.notch=Math.min(G.notch,NP);buildNotchRow();}};
 $('sRep').onchange=e=>{OPT.rep=+e.target.value;};
 $('sInv').onchange=e=>{OPT.inv=e.target.checked;};
-$('uiBtn').onclick=()=>document.body.classList.toggle('mini');
+function toggleUI(){const h=document.body.classList.toggle('hideall');$('uiBtn').textContent=h?'UI 보이기':'UI 숨기기';}
+$('uiBtn').onclick=toggleUI;
 if(matchMedia('(pointer:coarse)').matches||innerWidth<900||innerHeight<520)document.body.classList.add('mobile');
 $('quitBtn').onclick=()=>{G.paused=false;$('pause').classList.add('hidden');if(SND.ctx)SND.ctx.resume();showMenu();};
 $('resMenu').onclick=showMenu;
