@@ -246,7 +246,7 @@ th{color:var(--muted);font-weight:600;font-size:12px}
     <div class="box" id="ctrl">
       <button data-k="up">Z<br>역행</button><button data-k="neu">A<br>중립쪽</button><button data-k="down">Q<br>제동</button><button data-k="eb" class="eb">EB</button>
       <button data-k="dl">[<br>좌문</button><button data-k="dr">]<br>우문</button><button data-k="horn">기적</button><button data-k="view">시점</button>
-      <button data-k="revf">↑<br>전진쪽</button><button data-k="revb">↓<br>후진쪽</button><button data-k="light">L<br>전조등</button><button data-k="pause">⏸<br>정지</button><button data-k="closeann">C<br>닫습니다</button><button data-k="swap">F<br>전후교환</button>
+      <button data-k="revf">↑<br>전진쪽</button><button data-k="revb">↓<br>후진쪽</button><button data-k="light">L<br>전조등</button><button data-k="pause">⏸<br>정지</button><button data-k="closeann">C<br>닫습니다</button><button data-k="swap">F<br>전후교환</button><button data-k="laneL">&lt;<br>◀선로</button><button data-k="laneR">&gt;<br>선로▶</button>
     </div>
   </div>
   <div id="viewHint"></div>
@@ -268,6 +268,15 @@ th{color:var(--muted);font-weight:600;font-size:12px}
   <label class="ck"><input type="checkbox" id="sHud" checked> HUD 표시</label>
   <label class="ck"><input type="checkbox" id="sShake" checked> 운전실 흔들림</label>
   <label class="ck"><input type="checkbox" id="sMobile"> 모바일 간단 UI</label>
+  <div style="grid-column:1/-1;border-top:1px solid #2b3746;padding-top:8px;color:var(--text);font-weight:700">1인칭 카메라 위치</div>
+  <label>좌우 <input type="range" id="sCx" min="-60" max="60" value="0"></label>
+  <label>높이 <input type="range" id="sCy" min="-50" max="50" value="0"></label>
+  <label>앞뒤 <input type="range" id="sCz" min="-80" max="60" value="0"></label>
+  <label class="ck"><button class="btn ghost" id="sCreset" style="padding:6px 12px;font-size:13px">카메라 위치 초기화</button></label>
+  <div style="grid-column:1/-1;border-top:1px solid #2b3746;padding-top:8px;color:var(--text);font-weight:700">마스콘 설정</div>
+  <label>역행 단수<select id="sNp"><option value="0">열차 기본 (KTX 5단·전동차 4단)</option><option value="4">4단</option><option value="5">5단</option></select></label>
+  <label>길게 누를 때 반복 속도<select id="sRep"><option value="200">느리게</option><option value="120" selected>보통</option><option value="70">빠르게</option></select></label>
+  <label class="ck"><input type="checkbox" id="sInv"> 핸들 방향 반전 (Z 제동 · Q 역행)</label>
 </div>
 <div class="row"><button class="btn ghost" id="quitBtn">메뉴로</button><button class="btn" id="resumeBtn">계속하기</button></div></div></div>
 <div id="result" class="overlay hidden"><div class="obox"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><h2 id="resTitle">운행 종료</h2><div id="resSub" style="color:var(--muted)"></div></div><div class="grade" id="resGrade">A</div></div><div id="resTable"></div><div class="row"><button class="btn ghost" id="resMenu">메뉴로</button><button class="btn" id="resAgain">다시 운행</button></div></div></div>
@@ -304,9 +313,9 @@ const LINES=[
 const TRAINP={
   gtx:{ACC:[0,0.7,1.3,1.9,2.5],ACCV:[0,20,40,60,80],DEC:3.0,EB:4.0,smax:200,name:'GTX-A 8량'},
   suin:{ACC:[0,1.2,2.2,3.0,3.5],ACCV:[0,30,40,45,49],DEC:3.2,EB:4.5,smax:120,name:'351000호대 6량'},
-  ktx:{ACC:[0,0.6,1.1,1.5,1.9],ACCV:[0,60,100,140,180],DEC:2.8,EB:3.8,smax:305,name:'KTX-I 20량'},
-  ktxs:{ACC:[0,0.8,1.4,1.9,2.3],ACCV:[0,60,100,140,180],DEC:2.9,EB:3.9,smax:305,name:'KTX-산천 10량'},
-  ktx1:{ACC:[0,0.6,1.1,1.5,1.9],ACCV:[0,60,100,140,180],DEC:2.8,EB:3.8,smax:305,name:'KTX-I 20량 (구형 도색)'},
+  ktx:{np:5,ACC:[0,0.38,0.76,1.14,1.52,1.9],ACCV:[0,36,72,108,144,180],DEC:2.8,EB:3.8,smax:305,name:'KTX-I 20량'},
+  ktxs:{np:5,ACC:[0,0.46,0.92,1.38,1.84,2.3],ACCV:[0,36,72,108,144,180],DEC:2.9,EB:3.9,smax:305,name:'KTX-산천 10량'},
+  ktx1:{np:5,ACC:[0,0.38,0.76,1.14,1.52,1.9],ACCV:[0,36,72,108,144,180],DEC:2.8,EB:3.8,smax:305,name:'KTX-I 20량 (구형 도색)'},
 };
 
 /* ================= data unpack ================= */
@@ -392,7 +401,7 @@ function trainKey(){const k=(typeof SEL!=='undefined'&&SEL.train)||'auto';return
 let R=null,RI=0,TRK=null,NTRK=0,INST=null,BUCKET=[],TP=null;
 const CH=100;
 function setupRoute(ri){
-  RI=ri;R=PACK_META.routes[ri];TP=TRAINP[trainKey()];
+  RI=ri;R=PACK_META.routes[ri];TP=TRAINP[trainKey()];NP=OPT.np||TP.np||4;
   TRK=new Float64Array(BUF,R.trk,R.ntrk*5);NTRK=R.ntrk;
   INST=new Float64Array(BUF,R.inst,R.ninst*7);
   BUCKET=[];
@@ -406,9 +415,28 @@ const _tp={x:0,y:0,z:0,yaw:0,pitch:0};
 function trackAt(s,o){
   o=o||_tp;let f=(s-R.s0)/5;f=clamp(f,0,NTRK-1.0001);const i=Math.floor(f),t=f-i,a=i*5,b=a+5;
   o.x=lerp(TRK[a],TRK[b],t);o.y=lerp(TRK[a+1],TRK[b+1],t);o.z=lerp(TRK[a+2],TRK[b+2],t);o.yaw=lerp(TRK[a+3],TRK[b+3],t);o.pitch=lerp(TRK[a+4],TRK[b+4],t);
-  if(LANE){const d=laneX(s);if(d){o.x+=-Math.cos(o.yaw)*d;o.z+=Math.sin(o.yaw)*d;}}return o;
+  if(LANE||LTR){const d=laneOff(s);if(d){o.x+=-Math.cos(o.yaw)*d;o.z+=Math.sin(o.yaw)*d;}}return o;
 }
-let LANE=null;
+let LANE=null,LTR=null;
+function offOf(L,s){if(!L)return 0;const k=LANE;LANE=L;const v=laneActive(L,s)?laneX(s):0;LANE=k;return v;}
+function laneOff(s){
+  if(LTR){const a=offOf(LTR.from,s),b=offOf(LTR.to,s);if(s<=LTR.sa)return a;if(s>=LTR.sa+LTR.len)return b;
+    let t=(s-LTR.sa)/LTR.len;t=t*t*(3-2*t);return a+(b-a)*t;}
+  return offOf(LANE,s);}
+function laneSwitch(side){
+  if(!R||!R.lanes){toast('옆 선로 정보가 없습니다','info');return;}
+  if(G.flip){toast('뒤쪽 운전실에서는 선로를 바꿀 수 없습니다','info');return;}
+  if(LTR){toast('선로 전환 중입니다','info');return;}
+  const sa=G.s+15,len=70,se=sa+len,cur=offOf(LANE,se);
+  const cands=[[null,0]];for(const k in R.lanes){const L=R.lanes[k];if(laneActive(L,se))cands.push([L,offOf(L,se)]);}
+  let best=null,bd=1e9;
+  for(const [L,x] of cands){const d=x-cur;if(L===LANE)continue;
+    if(side==='L'&&d<-1.5&&d>-9&&-d<bd){best=[L,x];bd=-d;}
+    if(side==='R'&&d>1.5&&d<9&&d<bd){best=[L,x];bd=d;}}
+  if(!best){toast(side==='L'?'왼쪽에 넘어갈 선로가 없습니다':'오른쪽에 넘어갈 선로가 없습니다','info',1600);return;}
+  LTR={from:LANE,to:best[0],sa,len};toast(side==='L'?'◀ 왼쪽 선로로 진입':'오른쪽 선로로 진입 ▶','info',1600);
+}
+function laneTick(){if(LTR&&G.s-TR.total>LTR.sa+LTR.len){LANE=LTR.to;LTR=null;}}
 function laneActive(L,s){for(const g of L.g)if(g[0]<=s&&s<g[1])return true;return false;}
 function laneX(s){const L=LANE;if(!laneActive(L,s))return 0;const p=L.p;if(s<=p[0][0])return p[0][1];
   let lo=0,hi=p.length-1;if(s>=p[hi][0])return p[hi][1];while(hi-lo>1){const m=(lo+hi)>>1;if(p[m][0]<=s)lo=m;else hi=m;}
@@ -539,7 +567,7 @@ function buildSuinCab(){
   const notchIdx=n=>n<=-NB?0:n<0?NB+n:n===0?8:8+n;   // 0=EB .. 8=N .. 12=P4
   let last=0;
   function update(){
-    mc.position.z=9.29-notchIdx(G.notch)/12*0.2;
+    mc.position.z=9.29-Math.min(12,notchIdx(G.notch))/12*0.2;
     rv.rotation.x=-0.45*G.rev;
     const now=performance.now();if(now-last<200)return;last=now;
     if(pim.complete&&pim.naturalWidth){
@@ -655,14 +683,13 @@ function say(text){if(ORIG())return;if(!OPT.tts||!window.speechSynthesis)return;
 /* ================= game state ================= */
 const OPT={score:true,tts:true,sound:true,annVol:1,sens:1,shake:true};
 const G={started:false};
-const NP=4,NB=8;
+let NP=4;const NB=8;
 function nlabel(n){return n>0?'P'+n:n===0?'N':n<=-NB?'EB':'B'+(-n);}
 function startGame(ri,si,ei){annStop();
   clearWorld();disposeTrain();
-  setupRoute(ri);LANE=null;buildTrain(trainKey());useSoundSet(trainKey());
+  setupRoute(ri);LANE=null;LTR=null;buildTrain(trainKey());useSoundSet(trainKey());
   const st=R.stations.map(x=>Object.assign({},x));
   const first=st[si];
-  if(SEL.lane&&SEL.lane!=='main'&&!pickLane(SEL.lane,first.stop))setTimeout(()=>toast('그 방향에 옆 선로가 없어 본선으로 운행합니다','info',2500),300);
   const t0=first.dep!=null?first.dep:(first.arr!=null?first.arr+30:28800);
   Object.assign(G,{flip:false,st,si,ei,idx:si+1,s:first.stop,v:0,act:0,notch:-NB,rev:1,clock:t0-25,ts:1,
     doorL:first.door<0?1:0,doorR:first.door>0?1:0,doorCmd:first.door,doorAt:t0-60,
@@ -745,7 +772,7 @@ function step(dt){
   let tgt=0;
   if(G.ats||G.notch<=-NB)tgt=-TP.EB/3.6;
   else if(G.notch<0)tgt=-TP.DEC*(-G.notch)/(NB-1)/3.6;
-  else if(G.notch>0&&!doorsOpen&&G.rev!==0){const a=TP.ACC[G.notch],v1=TP.ACCV[G.notch];tgt=(vk<=v1?a:a*v1/vk)/3.6;}
+  else if(G.notch>0&&!doorsOpen&&G.rev!==0){const nA=TP.ACC.length-1,fi=G.notch/NP*nA,i0=Math.floor(fi),i1=Math.min(nA,i0+1),tt=fi-i0;const a=lerp(TP.ACC[i0],TP.ACC[i1],tt),v1=lerp(TP.ACCV[i0],TP.ACCV[i1],tt);tgt=(vk<=v1?a:a*v1/vk)/3.6;}
   const tau=tgt>G.act?(tgt>0?0.6:0.4):(tgt<0?0.35:0.3);
   G.act+=(tgt-G.act)*Math.min(1,dt/tau);
   trackAt(G.s,_a);
@@ -756,6 +783,7 @@ function step(dt){
   if(G.act<0){a=G.act+grav-res;G.v=Math.max(0,G.v+a*dt);}
   else{a=G.act+grav-res;if(G.v<=0&&a<0&&(G.rev===0||G.notch<=0))a=0;G.v=Math.max(0,G.v+a*dt);}
   if(G.v<0.01&&G.act<=0&&a<=0.02)G.v=0;
+  laneTick();
   const ds=G.v*dt*dirn;const s0p=G.s;G.s+=ds;G.odo+=Math.abs(ds);
   if(ORIG()&&ds>0){const e=G.st[G.ei].stop;for(const [p,k] of ANN.r[R.line]){const q=p+1;if(s0p<q&&G.s>=q&&p<e){annPlay(ANN.snd[k]);break;}}}
   if(G.departCheck&&G.v>0.3&&dirn>0){const d=G.departCheck.dep;if(OPT.score&&d!=null&&G.clock<d-5)addScore(-20,'조발 (출발 시각 전 출발)','bad');G.departCheck=null;
@@ -802,7 +830,7 @@ function updateCamera(t,dt){
   const c0=TR.cars[0].grp;c0.updateMatrixWorld(true);c0.getWorldQuaternion(_q);
   if(G.view==='cab'){
     const cab=TR.T.cab;
-    _v.set(-cab[0],cab[1],TR.len/2+cab[2]);
+    _v.set(-cab[0],cab[1],TR.len/2+cab[2]);if(G.camOff){_v.x-=G.camOff.x;_v.y+=G.camOff.y;_v.z+=G.camOff.z;}
     const sway=OPT.shake?Math.min(G.v/50,1):0;
     _v.x+=Math.sin(t*1.7)*0.012*sway;_v.y+=Math.sin(t*2.9)*0.008*sway;
     const cf=G.flip?TR.cabR:c0;if(G.flip){TR.cabR.updateMatrixWorld(true);TR.cabR.getWorldQuaternion(_q);}
@@ -971,6 +999,7 @@ function act(k){
   }
   else if(k==='view')setView(VIEWS[(VIEWS.indexOf(G.view)+1)%VIEWS.length]);
   else if(k==='pause')togglePause();
+  else if(k==='laneL')laneSwitch('L');else if(k==='laneR')laneSwitch('R');
   else if(k==='swap'){if(G.v>0.05){toast('정차 중에만 운전실을 바꿀 수 있습니다','bad');return;}
     G.flip=!G.flip;setNotch(-NB+1);setView(G.view);toast(G.flip?'뒤쪽 운전실로 전환 (역 정차 판정 없음)':'앞쪽 운전실로 전환','info',2200);}
   else if(k==='closeann'){if(SND.buf.close)sfx('close',1);else toast('이 열차 애드온에는 출입문 방송 음성이 없습니다','info',1500);}
@@ -984,11 +1013,11 @@ addEventListener('keydown',e=>{
   if(G.paused||G.ended)return;
   if((G.view==='follow'||G.view==='fixed')&&['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE'].includes(c))return;
   if(e.repeat){
-    if(['KeyZ','KeyQ','KeyA'].includes(c)){const n=performance.now();if(n-(G.lastRep||0)<120)return;G.lastRep=n;}
+    if(['KeyZ','KeyQ','KeyA'].includes(c)){const n=performance.now();if(n-(G.lastRep||0)<(OPT.rep||120))return;G.lastRep=n;}
     else if(!['ArrowLeft','ArrowRight','PageUp','PageDown'].includes(c))return;
   }else if(['KeyZ','KeyQ','KeyA'].includes(c))G.lastRep=performance.now()+200;
-  if(c==='KeyZ')act('up');
-  else if(c==='KeyQ')act('down');
+  if(c==='KeyZ')act(OPT.inv?'down':'up');
+  else if(c==='KeyQ')act(OPT.inv?'up':'down');
   else if(c==='KeyA')act('neu');
   else if(c==='KeyN')act('n');
   else if(c==='Space')act('eb');
@@ -998,6 +1027,7 @@ addEventListener('keydown',e=>{
   else if(c==='Enter'||c==='NumpadEnter')act('horn');
   else if(c==='KeyL')act('light');
   else if(c==='KeyC')act('closeann');
+  else if(c==='Comma')act('laneL');else if(c==='Period')act('laneR');
   else if(c==='KeyF')act('swap');
   else if(c==='KeyV')act('view');
   else if(c>='Digit1'&&c<='Digit4')setView(VIEWS[+c.slice(5)-1]);
@@ -1011,7 +1041,7 @@ function holdStop(){if(holdT){clearTimeout(holdT);holdT=null;}}
 document.querySelectorAll('#ctrl button').forEach(b=>{
   const k=b.dataset.k,rep=['up','down','neu'].includes(k);
   b.addEventListener('pointerdown',e=>{e.preventDefault();act(k);if(!rep)return;holdStop();
-    const loop=()=>{act(k);holdT=setTimeout(loop,120);};holdT=setTimeout(loop,350);});
+    const loop=()=>{act(k);holdT=setTimeout(loop,OPT.rep||120);};holdT=setTimeout(loop,350);});
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,holdStop));
 });
 $('revRow').addEventListener('pointerdown',e=>{const sp=e.target.closest('span[data-r]');
@@ -1050,7 +1080,7 @@ function syncSettings(){
   $('sVol').value=Math.round((SND.master?SND.master.gain.value:0.9)*100);$('sAnn').value=Math.round(OPT.annVol*100);
   $('sFov').value=G.cabFov||60;$('sSens').value=Math.round(OPT.sens*100);$('sTs').value=String(G.ts||1);
   $('sSound').checked=OPT.sound;$('sTTS').checked=OPT.tts;$('sScore').checked=OPT.score;$('sHud').checked=!document.body.classList.contains('nohud');
-  $('sShake').checked=OPT.shake;$('sMobile').checked=document.body.classList.contains('mobile');}
+  $('sShake').checked=OPT.shake;const co=G.camOff||{x:0,y:0,z:0};$('sCx').value=co.x*100;$('sCy').value=co.y*100;$('sCz').value=co.z*100;$('sNp').value=String(OPT.np||0);$('sRep').value=String(OPT.rep||120);$('sInv').checked=!!OPT.inv;$('sMobile').checked=document.body.classList.contains('mobile');}
 $('sVol').oninput=e=>{if(SND.master)SND.master.gain.value=e.target.value/100;};
 $('sAnn').oninput=e=>{OPT.annVol=e.target.value/100;if(ANNP.el)ANNP.el.volume=Math.min(1,OPT.annVol);};
 $('sFov').oninput=e=>{G.cabFov=+e.target.value;};
@@ -1063,6 +1093,11 @@ $('sScore').onchange=e=>{OPT.score=e.target.checked;document.body.classList.togg
 $('sHud').onchange=e=>{document.body.classList.toggle('nohud',!e.target.checked);};
 $('sShake').onchange=e=>{OPT.shake=e.target.checked;};
 $('sMobile').onchange=e=>{document.body.classList.toggle('mobile',e.target.checked);};
+$('sCx').oninput=$('sCy').oninput=$('sCz').oninput=()=>{G.camOff={x:$('sCx').value/100,y:$('sCy').value/100,z:$('sCz').value/100};};
+$('sCreset').onclick=()=>{$('sCx').value=$('sCy').value=$('sCz').value=0;G.camOff={x:0,y:0,z:0};};
+$('sNp').onchange=e=>{OPT.np=+e.target.value;if(G.started){NP=OPT.np||TP.np||4;G.notch=Math.min(G.notch,NP);buildNotchRow();}};
+$('sRep').onchange=e=>{OPT.rep=+e.target.value;};
+$('sInv').onchange=e=>{OPT.inv=e.target.checked;};
 $('uiBtn').onclick=()=>document.body.classList.toggle('mini');
 if(matchMedia('(pointer:coarse)').matches||innerWidth<900||innerHeight<520)document.body.classList.add('mobile');
 $('quitBtn').onclick=()=>{G.paused=false;$('pause').classList.add('hidden');if(SND.ctx)SND.ctx.resume();showMenu();};
@@ -1088,8 +1123,7 @@ function buildMenu(){
   $('trainRow').innerHTML='<span style="align-self:center;color:var(--muted);font-size:13px">열차</span>'+TOPT.filter(([k])=>k==='auto'||PACK_META.trains[k]).map(([k,n])=>`<button class="dir ${SEL.train===k?'sel':''}" data-t="${k}">${n}</button>`).join('');
   $('trainRow').querySelectorAll('.dir').forEach(b=>b.onclick=()=>{SEL.train=b.dataset.t;buildMenu();});
   SEL.lane=SEL.lane||'main';
-  $('laneRow').innerHTML='<span style="align-self:center;color:var(--muted);font-size:13px">선로</span>'+[['L','◀ 왼쪽 선로'],['main','본선'],['R','오른쪽 선로 ▶']].map(([k,n])=>`<button class="dir ${SEL.lane===k?'sel':''}" data-k="${k}">${n}</button>`).join('')+`<label style="align-self:center;margin-left:10px;font-size:13px;color:var(--muted)"><input type="checkbox" id="optStopsOnly" ${SEL.stopsOnly?'checked':''}> 정차역만 보기</label>`;
-  $('laneRow').querySelectorAll('.dir').forEach(b=>b.onclick=()=>{SEL.lane=b.dataset.k;buildMenu();});
+  $('laneRow').innerHTML=`<label style="align-self:center;margin-left:10px;font-size:13px;color:var(--muted)"><input type="checkbox" id="optStopsOnly" ${SEL.stopsOnly?'checked':''}> 정차역만 보기</label>`;
   $('optStopsOnly').onchange=e=>{SEL.stopsOnly=e.target.checked;buildMenu();};
   const r=PACK_META.routes[SEL.ri];
   $('lineMap').innerHTML=r.stations.map((s,i)=>{
@@ -1144,7 +1178,7 @@ function frame(now){
     requestAnimationFrame(frame);
     const tm=location.hash.match(/^#t=(\d+),(\d+),(\d+),(\w+),([-\d.]+),([-\d.]+)/);
     if(tm){OPT.tts=false;OPT.sound=false;startGame(+tm[1],+tm[2],+tm[3]);G.s+=+tm[5];G.yaw=+tm[6];setView(tm[4]);if(tm[4]==='ext'){G.cyaw=+tm[6];}
-      const fm=location.hash.match(/fc=([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)/);if(fm){G.fc.pos.set(+fm[1],+fm[2],+fm[3]);G.fc.yaw=+fm[4];G.fc.pitch=+fm[5];}if(/cabvis/.test(location.hash))TR.cab.visible=true;if(/flip/.test(location.hash))act('swap');
+      const fm=location.hash.match(/fc=([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)/);if(fm){G.fc.pos.set(+fm[1],+fm[2],+fm[3]);G.fc.yaw=+fm[4];G.fc.pitch=+fm[5];}if(/cabvis/.test(location.hash))TR.cab.visible=true;if(/flip/.test(location.hash))act('swap');if(/laneR/.test(location.hash)){act('laneR');G.s+=60;}if(/laneL/.test(location.hash)){act('laneL');G.s+=60;}setTimeout(()=>{document.title='DBG off='+laneOff(G.s).toFixed(2)+' ltr='+(LTR?JSON.stringify([LTR.sa,LTR.len,offOf(LTR.to,LTR.sa+LTR.len)]):'none')+' lanes='+Object.keys(R.lanes||{}).length;},500);
       document.title='OK '+R.title+' s='+G.s.toFixed(0);}
   }catch(e){$('loadMsg').textContent='오류: '+e.message+' (최신 Chrome/Edge에서 열어 주세요)';console.error(e);}
 })();
